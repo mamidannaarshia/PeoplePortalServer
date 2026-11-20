@@ -63,10 +63,11 @@ def test_asset_on_sample_fixture_reproduces_the_spec_example():
     rows = project_flow_metrics(build_asset_context(), FlowMetricsConfig())
     spec_week = {r.metric_key: r for r in rows if r.week_start == date(2026, 11, 2)}
 
-    # 3 weeks (Oct 19, Oct 26, Nov 2) x 6 metrics for the one demo project.
-    assert len(rows) == 18
+    # 3 weeks (Oct 19, Oct 26, Nov 2) x 7 metrics for the one demo project.
+    assert len(rows) == 21
     assert spec_week["prs_opened"].value == 3
     assert spec_week["prs_merged"].value == 2
+    assert spec_week["prs_touched"].value == 3
     assert spec_week["median_time_to_merge_hours"].value == pytest.approx(12.5)
     assert spec_week["median_time_to_first_review_hours"].value == pytest.approx(57.99, abs=0.01)
     assert spec_week["median_open_pr_age_days"].value == pytest.approx(4.58, abs=0.01)

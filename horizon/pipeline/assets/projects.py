@@ -47,7 +47,8 @@ def _row(project_pk: str, metric: FlowMetric) -> ProjectMetricRow:
     group_name="08_project_metrics",
     description=(
         "T5.5 weekly engineering-flow metrics per project: PRs opened and merged, "
-        "open PRs and their age, time to first review, time to merge. Reads a "
+        "open PRs and their age, time to first review, time to merge, and PRs "
+        "touched. Reads a "
         "JSON fixture until the T1.1 PR tables exist."
     ),
 )

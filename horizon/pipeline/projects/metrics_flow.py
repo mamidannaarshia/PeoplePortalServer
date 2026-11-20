@@ -27,6 +27,7 @@ FLOW_METRIC_KEYS = (
     "median_open_pr_age_days",
     "median_time_to_first_review_hours",
     "median_time_to_merge_hours",
+    "prs_touched",
 )
 
 SECONDS_PER_HOUR = 3600
@@ -145,6 +146,20 @@ def prs_merged(prs: list[PullRequest], start: datetime, end: datetime) -> int:
     return sum(1 for pr in prs if pr.merged_at is not None and start <= pr.merged_at < end)
 
 
+def prs_touched(prs: list[PullRequest], start: datetime, end: datetime) -> int:
+    """Count PRs opened or merged in [start, end); one opened and merged here counts once.
+
+    Each PullRequest is counted at most once, so the same PR number in two of a
+    project's repositories still counts as two PRs.
+    """
+    return sum(
+        1
+        for pr in prs
+        if start <= pr.created_at < end
+        or (pr.merged_at is not None and start <= pr.merged_at < end)
+    )
+
+
 def open_prs_at(prs: list[PullRequest], moment: datetime) -> list[PullRequest]:
     """PRs created before ``moment`` and not closed yet at ``moment`` (the set O(w))."""
     return [
@@ -207,7 +222,7 @@ def median_time_to_merge_hours(prs: list[PullRequest], week: Week) -> FlowMetric
 
 
 def flow_metrics_for_week(prs: list[PullRequest], week: Week, as_of: datetime) -> list[FlowMetric]:
-    """All six T5.5 metrics for one week."""
+    """All seven T5.5 metrics for one week."""
     metrics = [
         FlowMetric(week.week_start, "prs_opened", float(prs_opened(prs, week.start, week.end))),
         FlowMetric(week.week_start, "prs_merged", float(prs_merged(prs, week.start, week.end))),
@@ -217,6 +232,7 @@ def flow_metrics_for_week(prs: list[PullRequest], week: Week, as_of: datetime) -
         median_open_pr_age_days(prs, week),
         median_time_to_first_review_hours(prs, week, as_of),
         median_time_to_merge_hours(prs, week),
+        FlowMetric(week.week_start, "prs_touched", float(prs_touched(prs, week.start, week.end))),
     ]
     if not week.partial:
         return metrics

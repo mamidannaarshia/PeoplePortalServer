@@ -62,6 +62,8 @@ def test_spec_worked_example():
     assert week["median_open_pr_age_days"].value == pytest.approx(4.58, abs=0.01)
     assert week["median_time_to_first_review_hours"].value == pytest.approx(57.99, abs=0.01)
     assert week["median_time_to_merge_hours"].value == pytest.approx(12.5)
+    # #30 and #32 were opened and merged this week but count once each.
+    assert week["prs_touched"].value == 3
 
 
 def test_spec_example_first_review_evidence_counts():
@@ -148,6 +150,9 @@ def test_week_boundaries_for_opened_and_merged():
     assert week3["prs_opened"].value == 0
     assert week1["prs_merged"].value == 0
     assert week2["prs_merged"].value == 1  # #1 merged at Mon 00:00
+    assert week1["prs_touched"].value == 2  # #1 and #3 opened
+    assert week2["prs_touched"].value == 2  # #1 merged, #2 opened
+    assert week3["prs_touched"].value == 0  # #3 was only reviewed: a real zero
 
 
 def test_open_prs_end_of_week_and_age():
@@ -197,6 +202,7 @@ def test_missing_reasons_when_nothing_happened():
     week = by_key(rows, date(2026, 10, 19))
 
     assert week["prs_opened"].value == 0  # a real zero, not missing
+    assert week["prs_touched"].value == 0
     assert week["open_prs_end_of_week"].value == 0
     assert week["median_open_pr_age_days"].missing_reason == "no_open_prs"
     assert week["median_time_to_first_review_hours"].missing_reason == "no_reviews"
@@ -204,10 +210,27 @@ def test_missing_reasons_when_nothing_happened():
     assert week["median_time_to_merge_hours"].value is None
 
 
-def test_every_week_has_all_six_metrics():
+def test_prs_touched_counts_each_pull_request_once():
+    week = date(2026, 11, 2)
+    as_of = ny(2026, 11, 8, 23, 59)
+    opened_and_merged = PullRequest(1, "alice", ny(2026, 11, 2, 9), ny(2026, 11, 2, 10), ny(2026, 11, 2, 10))
+    # Same number in another repository of the project: a different PR.
+    same_number_other_repo = PullRequest(1, "bob", ny(2026, 11, 3, 9), None, None)
+    merged_from_last_week = PullRequest(2, "carol", ny(2026, 10, 28, 9), ny(2026, 11, 4, 9), ny(2026, 11, 4, 9))
+    closed_unmerged_from_last_week = PullRequest(3, "dave", ny(2026, 10, 28, 9), None, ny(2026, 11, 4, 9))
+    prs = [opened_and_merged, same_number_other_repo, merged_from_last_week, closed_unmerged_from_last_week]
+
+    rows = by_key(project_flow_metrics(prs, week, as_of), week)
+
+    # Closing without merging does not touch a PR; the other three do.
+    assert rows["prs_touched"].value == 3
+    assert rows["prs_touched"].missing_reason is None
+
+
+def test_every_week_has_all_seven_metrics():
     rows = project_flow_metrics(THREE_WEEK_PRS, WINDOW_START, THREE_WEEK_AS_OF)
 
-    assert len(rows) == 3 * 6
+    assert len(rows) == 3 * 7
     assert {row.metric_key for row in rows} == {
         "prs_opened",
         "prs_merged",
@@ -215,4 +238,5 @@ def test_every_week_has_all_six_metrics():
         "median_open_pr_age_days",
         "median_time_to_first_review_hours",
         "median_time_to_merge_hours",
+        "prs_touched",
     }
